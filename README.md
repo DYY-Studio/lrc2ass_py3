@@ -3,6 +3,10 @@ A simple Python 3.x script is used for changing your LRC file into ASS subtitle 
 
 一个用于将LRC歌词文件转换为ASS字幕文件的简单Python脚本。
 
+The first full python script written by myself.
+
+我自己编写的第一个完整的Python脚本
+
 Copyright(c) 2020 yyfll (MIT)
 
 # English Readme
