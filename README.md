@@ -48,3 +48,13 @@ Poor English.
 >
 > 所以这并不会对输出一个正确ASS字幕文件产生任何影响
 
+# Update
+## 1.0.0b
+* Support LRC offset tag.
+* Simplify program.
+
+# To do
+* Full English supported
+* Full Chinese annotation
+* File list input
+* Reusable
