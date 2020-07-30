@@ -51,6 +51,7 @@ Poor English.
 # Update
 ## 1.0.0b
 * Support LRC offset tag.
+* Default LRC offset can be set.
 * Simplify program.
 
 # To do
@@ -58,3 +59,4 @@ Poor English.
 * Full Chinese annotation
 * File list input
 * Reusable
+* Endless debugging
