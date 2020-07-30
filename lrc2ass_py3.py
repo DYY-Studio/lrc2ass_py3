@@ -14,8 +14,15 @@ skip_single_none = True
 encoding
 该选项控制读写时所用的文本编码
 '''
-read_encoding='utf-8'
-write_encoding='utf-8'
+read_encoding = 'utf-8'
+write_encoding = 'utf-8'
+
+'''
+offset
+默认歌词时间偏移，不会覆盖或叠加到文件中设置的偏移
+单位为毫秒（ms），但实际处理时精度为厘秒（ms*10）
+'''
+offset = 0
 
 '''
 如果有需要更改ASS的默认Style
@@ -56,6 +63,7 @@ line_end = None
 splitStr = None
 # 编译正则表达式
 pattern = re.compile('\\[[0-9][0-9]:[0-9][0-9]\\.[0-9][0-9]\\]')
+pattern2 = re.compile('\\[offset:-?[0-9]+\\]')
 
 print('\n正在处理LRC计时标签...')
 
@@ -71,6 +79,13 @@ for i in range(0, len(lrc_line)):
         continue
     # 获取所有匹配正则表达式的字符串（即时间标签）
     results = pattern.findall(s)
+    # 如果没有时间偏移信息，就尝试匹配时间偏移信息
+    if offset == 0:
+        offset_str = pattern2.findall(s)
+        if len(offset_str) != 0:
+            offset = int(offset_str[0].rstrip(']').lstrip('[').split(':')[1])
+            print('找到歌词偏移值: {0:+}ms'.format(offset))
+            continue
     # 如果没找到时间标签就跳过该行
     if len(results) == 0:
         continue
@@ -112,6 +127,45 @@ ass_line.append('[Events]')
 ass_line.append('Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text')
 # </editor-fold>
 
+offset = int(offset / 10)
+
+
+def tag_process(tag_str: str, line: int):
+    # 时间标签处理函数
+    # 去除时间标签首尾中括号
+    tag_str = tag_str.lstrip('[').rstrip(']')
+    # 切割分钟、秒、厘秒三个部分
+    minute = int(tag_str.split(':')[0])
+    second = int(tag_str.split(':')[1].split('.')[0])
+    centisecond = int(tag_str.split('.')[1])
+    # 计算总厘秒并添加偏移值
+    tag_time = minute * 60 * 100 + second * 100 + centisecond + offset
+    # 只有在添加偏移值后厘秒数为正数的，才会启用偏移
+    if tag_time > 0:
+        second, centisecond = divmod(tag_time, 100)
+        if second > 0:
+            minute, second = divmod(second, 60)
+        else:
+            minute = 0
+    else:
+        print('警告: 行\"{0}\"中时间标签\"{1}\"添加偏移值\"{2}ms\"后为负，该偏移不会被应用'
+              .format(line, tag_str, offset * 10))
+    # 再次计算厘秒数
+    tag_time = minute * 60 * 100 + second * 100 + centisecond
+    # 格式化输出
+    if minute < 60:
+        tag_str = '0:{0:0>2d}:{1:0>2d}.{2:0>2d}'.format(minute, second, centisecond)
+    elif minute == 60:
+        tag_str = '1:00:{0:0>2d}.{1:0>2d}'.format(second, centisecond)
+    else:
+        tag_str = '{0}:{1:0>2d}:{2:0>2d}.{3:0>2d}'\
+            .format(int(math.modf(minute / 60)[1]), minute % 60, second, centisecond)
+    # 返回结果
+    # tag_time: 厘秒数
+    # tag_str: 符合ASS格式的时间字符串
+    return tag_time, tag_str
+
+
 last_time = -1
 start_time = -1
 # 主要时间轴处理
@@ -134,28 +188,18 @@ for i in range(0, len(line_indexs)):
     line_end = None
     backup_line_end = None
     single_tag = False
-
+    # 检查是否需要跳过单个时间标签且没有实际内容的行
     if skip_single_none:
         if len(line_indexs[i][1]) == 1 and line_indexs[i][1][0].replace('\n', '') == '':
             print('警告: 已跳过单时间标签并且没有文本内容的行\"{0}\"\n'.format(line))
             continue
-
+    # 索引index[]
     for iii in range(0, len(line_indexs[i][0])):
-        tag = line_indexs[i][0][iii][1].lstrip('[').rstrip(']')
+        # 获取时间标签递交处理
+        tag = line_indexs[i][0][iii][1]
+        str_time, tag = tag_process(tag, line)
 
-        minute = int(tag.split(':')[0])
-        second = int(tag.split(':')[1].split('.')[0])
-        centisecond = int(tag.split('.')[1])
-
-        str_time = minute * 60 * 100 + second * 100 + centisecond
-
-        if minute < 60:
-           tag = '0:' + tag
-        elif minute == 60:
-           tag = '1:00:{0}.{1}'.format(second, centisecond)
-        else:
-            tag = '{0}:{1}:{2}.{3}'.format(int(math.modf(minute / 60)[1]), minute % 60, second, centisecond)
-
+        # 获取时间标签在字符串中的位置，字符串长度，该时间标签对应的字符
         index = int(line_indexs[i][0][iii][0])
         last_index = int(line_indexs[i][0][iii][2])
         str_lines = line_indexs[i][1][iii]
@@ -176,15 +220,15 @@ for i in range(0, len(line_indexs)):
 
                 print('警告: 行\"{0}\"是单时间标签LRC行，该行结束时间可能不准确'.format(line))
         elif index != last_index:
-            if ass_string is not None:
-               ass_string = '{0}{{\\k{1}}}{2}'.format(ass_string, str(str_time - last_time), str_lines)
+            if len(ass_string) > 0:
+                ass_string = '{0}{{\\k{1}}}{2}'.format(ass_string, str(str_time - last_time), str_lines)
             else:
-               ass_string = '{{\\k{0}}}{1}'.format(str(str_time - start_time), str_lines)
+                ass_string = '{{\\k{0}}}{1}'.format(str(str_time - start_time), str_lines)
             last_time = str_time
             backup_line_end = tag
         else:
             line_end = tag
-            if ass_string is not None:
+            if len(ass_string) > 0:
                 ass_string = '{0}{{\\k{1}}}{2}'.format(ass_string, str(str_time - last_time), str_lines)
             else:
                 ass_string = '{{\\k{0}}}{1}'.format(str(str_time - start_time), str_lines)
@@ -192,19 +236,8 @@ for i in range(0, len(line_indexs)):
     if line_end is None:
         if not i + 1 == len(line_indexs):
             try:
-                tag = line_indexs[i + 1][0][0][1].lstrip('[').rstrip(']')
-
-                minute = int(tag.split(':')[0])
-                second = int(tag.split(':')[1].split('.')[0])
-                centisecond = int(tag.split('.')[1])
-
-                if minute < 60:
-                    line_end = '0:' + tag
-                elif minute == 60:
-                    line_end = '1:00:{0}.{1}'.format(second, centisecond)
-                else:
-                    line_end = '{0}:{1}:{2}.{3}'.format(int(math.modf(minute / 60)[1]),
-                                                        minute % 60, second, centisecond)
+                tag = line_indexs[i + 1][0][0][1]
+                _, line_end = tag_process(tag)
             except Exception as e:
                 print(e)
         else:
@@ -215,7 +248,7 @@ for i in range(0, len(line_indexs)):
         print('警告: 行\"{0}\"没有结束时间标签，自动选择\"{1}\"作为结束时间\n'.format(line, line_end))
 
         line_end_time = int(line_end.split(':')[0]) * 60 + int(line_end.split(':')[1]) * 60 * 100 + \
-            int(line_end.split(':')[2].split('.')[0]) * 100 + int(line_end.split('.')[1])
+                        int(line_end.split(':')[2].split('.')[0]) * 100 + int(line_end.split('.')[1])
 
         if single_tag and ass_string != '':
             str_time, str_line = ass_string.split('{\\k}')
@@ -243,5 +276,3 @@ try:
     print('成功输出ASS文件: \"{0}\"'.format(os.path.basename(ass_fullpath)))
 except Exception as e:
     print(e)
-
-# print('\n'.join(ass_line))
