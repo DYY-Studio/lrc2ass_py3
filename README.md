@@ -9,6 +9,15 @@ The first full python script written by myself.
 
 Copyright(c) 2020 yyfll (MIT)
 
+# Update
+## 1.0.0c
+* Support chardet character encoding detector.
+* A few improvements
+## 1.0.0b
+* Support LRC offset tag.
+* Default LRC offset can be set.
+* Simplify program.
+
 # English Readme
 Poor English.
 ## What can lrc2ass_py3 do?
@@ -49,12 +58,6 @@ Poor English.
 > 这并不意味着lrc2ass_py3不能处理非中文的LRC文件
 >
 > 所以这并不会对输出一个正确ASS字幕文件产生任何影响
-
-# Update
-## 1.0.0b
-* Support LRC offset tag.
-* Default LRC offset can be set.
-* Simplify program.
 
 # To do
 * Full English supported
