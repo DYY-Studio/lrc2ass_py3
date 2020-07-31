@@ -9,6 +9,9 @@ The first full python script written by myself.
 
 Copyright(c) 2020 yyfll (MIT)
 
+# Dependent
+* chardet (lrc2ass_py3 >= 1.0.0c)
+
 # Update
 ## 1.0.0c
 * Support chardet character encoding detector.
