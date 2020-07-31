@@ -16,6 +16,7 @@ Poor English.
 * Very easy to use.
 * Support Multi timing tags in a single line.
 * Support auto choose end timing if can't find timing in the end of the line.
+* Support LRC offset tag.
 
 ## What will cause error?
 * A lrc file in wrong text coding (such as use utf-8 read gbk file.)
@@ -35,6 +36,7 @@ Poor English.
 * 使用起来非常简单
 * 支持一个歌词行多个时间标签（即卡拉OK效果）
 * 支持在找不到歌词行的结束时间时，自动选择结束时间
+* 支持时间偏移标签（offset）
 
 ## 有什么可能会导致错误的？
 * 读取了非指定文本编码的LRC歌词文件（比如像用utf-8编码读取gbk编码的文件）
